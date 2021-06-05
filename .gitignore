@@ -1,0 +1,7 @@
+out/*
+dist/*
+node_modules
+*.log
+.env
+.DS_Store
+firebase-service-account.json
