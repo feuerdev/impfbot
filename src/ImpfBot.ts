@@ -74,7 +74,7 @@ export default class ImpfBot {
         return (
           String(user.centerId) === String(response.vaccinationCenterPk) &&
           user.ageOver60 === request.over60 &&
-          Boolean(user.allowedVaccines[response.vaccineName]) === true &&
+          String(user.allowedVaccines[response.vaccineName]) === "true" &&
           response.numberOfAppointments > user.minAppointments &&
           (!request.lastCheckHadAppointments || (request.startOfCurrentAppointmentWindow!.getTime() < user.registrationDate.getTime()))
         )
@@ -187,6 +187,7 @@ export default class ImpfBot {
   ///Main Request
   async checkTermin(ageOver60: boolean, zip: string): Promise<ImpfResponse | undefined> {
     const wsAge = ageOver60 ? AGE_OVER_60 : AGE_UNDER_60
+    //TODO: nimm die count=2 wieder raus
     const url = `https://www.impfportal-niedersachsen.de/portal/rest/appointments/findVaccinationCenterListFree/${zip}?stiko=&count=2&birthdate=${wsAge}`
     const response = await axios.get(url).catch(error => {
       console.log(error)
