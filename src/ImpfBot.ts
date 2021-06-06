@@ -22,13 +22,13 @@ export default class ImpfBot {
   interval = 15000
 
   run(): void {
-    const zips = [26160,26624,38102,29221,49681,27472,27749,27211,26721,49808,26419,38518,38642,37081,37412,48529,31787,30521,21423,29683,38350,31137,37603,26835,21337,31623,37154,26123,27793,49080,49134,27711,31224,27404,38229,31655,21684,29525,49393,27283,26919,26389,26427,38300,38440]
-    zips.forEach(zip => {
-      const center = new ImpfCenter(String(zip), String(zip))
-      const request = new ImpfRequest(center, true)
-      const request2 = new ImpfRequest(center, false)
-      this.requests.push(request, request2)
-    })
+    // const zips = [26160,26624,38102,29221,49681,27472,27749,27211,26721,49808,26419,38518,38642,37081,37412,48529,31787,30521,21423,29683,38350,31137,37603,26835,21337,31623,37154,26123,27793,49080,49134,27711,31224,27404,38229,31655,21684,29525,49393,27283,26919,26389,26427,38300,38440]
+    // zips.forEach(zip => {
+    //   const center = new ImpfCenter(String(zip), String(zip))
+    //   const request = new ImpfRequest(center, true)
+    //   const request2 = new ImpfRequest(center, false)
+    //   this.requests.push(request, request2)
+    // })
     
     //TODO: Load users and centers from firestore
 
@@ -187,7 +187,7 @@ export default class ImpfBot {
   ///Main Request
   async checkTermin(ageOver60: boolean, zip: string): Promise<ImpfResponse | undefined> {
     const wsAge = ageOver60 ? AGE_OVER_60 : AGE_UNDER_60
-    const url = `https://www.impfportal-niedersachsen.de/portal/rest/appointments/findVaccinationCenterListFree/${zip}?stiko=&count=1&birthdate=${wsAge}`
+    const url = `https://www.impfportal-niedersachsen.de/portal/rest/appointments/findVaccinationCenterListFree/${zip}?stiko=&count=2&birthdate=${wsAge}`
     const response = await axios.get(url).catch(error => {
       console.log(error)
     })
