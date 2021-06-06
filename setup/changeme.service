@@ -1,9 +1,0 @@
-[Unit]
-Description=changeme
-
-[Service]
-ExecStart=/usr/bin/npm run deploy --prefix /srv/changeme/
-Restart=always
-
-[Install]
-WantedBy=multi-user.target

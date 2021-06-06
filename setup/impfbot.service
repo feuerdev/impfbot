@@ -1,0 +1,9 @@
+[Unit]
+Description=Impfbot
+
+[Service]
+ExecStart=/usr/bin/npm run deploy --prefix /srv/impfbot/
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
