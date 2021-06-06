@@ -95,8 +95,7 @@ export default class ImpfBot {
     const message = {
       notification: {
         title: "Impftermin verfügbar",
-        body: `${response.numberOfAppointments} freie Termine\n${response.vaccinationCenterName} - ${response.vaccinationCenterZip}\n
-        ${response.vaccineName}`,
+        body: `${response.numberOfAppointments} freie Termine\n${response.vaccinationCenterName} - ${response.vaccinationCenterZip}\n${response.vaccineName}`,
       },
       apns: {
         payload: {
