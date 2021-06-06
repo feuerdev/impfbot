@@ -16,4 +16,4 @@ jobs:
           username: ${{ secrets.SERVER_USERNAME }}
           password: ${{ secrets.SERVER_PASSWORD }}
           port: ${{ secrets.SERVER_PORT }}
-          script: sudo systemctl restart impfbot
+          script: systemctl restart impfbot
