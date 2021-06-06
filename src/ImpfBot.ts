@@ -19,30 +19,30 @@ export default class ImpfBot {
 
   users: ImpfUser[] = []
   requests: ImpfRequest[] = []
-  interval = 5000
+  interval = 1000
 
   run(): void {
     //TODO: Load users and centers from firestore
 
     setInterval(() => {
       for (const request of this.requests) {
-        if(request.center.zip == "30521") {
-          console.log("Faking Check")
-          const response = new ImpfResponse(
-            "889791349656378",
-            "Impfzentrum Hannover 4",
-            "30521",
-            "Johnson&Johnson",
-            "vector",
-            false,
-            50)
-          this.handleResponse(request, response)
-        } else {
+        // if(request.center.zip == "30521") {
+        //   console.log("Faking Check")
+        //   const response = new ImpfResponse(
+        //     "889791349656378",
+        //     "Impfzentrum Hannover 4",
+        //     "30521",
+        //     "Johnson&Johnson",
+        //     "vector",
+        //     false,
+        //     50)
+        //   this.handleResponse(request, response)
+        // } else {
           console.log(`Checking center at ${request.center.zip}`)
           this.checkTermin(request.over60, request.center.zip).then((response) => {
             this.handleResponse(request, response)
           })
-        }
+        // }
         
       }
     }, this.interval)
