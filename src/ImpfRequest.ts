@@ -5,6 +5,6 @@ export default class ImpfRequest {
     public center:ImpfCenter,
     public over60:boolean,
     public lastCheckHadAppointments:boolean = false,
-    public startOfCurrentAppointmentWindow:Date|undefined = undefined
+    public startOfCurrentAppointmentWindow:Date|undefined = undefined,
 	) {}
 }

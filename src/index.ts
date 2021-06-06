@@ -2,7 +2,6 @@ import ImpfBot from "./ImpfBot"
 import express from "express"
 
 import dotenv from "dotenv"
-import { Frequency } from "./ImpfUser"
 dotenv.config()
 
 const bot = new ImpfBot()
@@ -12,6 +11,8 @@ app.use(express.urlencoded({ extended: true }))
 
 bot.run()
 app.listen(3000)
+
+console.log("Impfbot started")
  
 app.post("/api/subscribe", async function(req, res) {
 	const fcmToken:string = req.body.fcmToken
@@ -21,15 +22,9 @@ app.post("/api/subscribe", async function(req, res) {
 	const allowModerna:boolean = req.body.allowModerna
 	const allowJohnson:boolean = req.body.allowJohnson
 	const allowAstra:boolean = req.body.allowAstra
+	const minAppointments:number = req.body.minAppointments
 
-	let frequency:Frequency = Frequency.low
-	
-	switch(req.body.frequency) {
-	case 0: frequency = Frequency.low; break
-	case 1: frequency = Frequency.high; break
-	}
-
-	const succeeded = await bot.addSubscription(fcmToken, ageOver60, zip, frequency, allowBiontech, allowModerna,	allowJohnson,	allowAstra)
+	const succeeded = await bot.addSubscription(fcmToken, ageOver60, zip, minAppointments, allowBiontech, allowModerna,	allowJohnson,	allowAstra)
 
 	if(succeeded) {
 		res.sendStatus(200)

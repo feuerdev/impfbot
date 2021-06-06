@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable indent */
 import axios from "axios"
 import admin, { ServiceAccount } from "firebase-admin"
@@ -5,7 +6,7 @@ import serviceAccount from "./firebase-service-account.json"
 import ImpfCenter from "./ImpfCenter"
 import ImpfRequest from "./ImpfRequest"
 import ImpfResponse from "./ImpfResponse"
-import ImpfUser, { Frequency } from "./ImpfUser"
+import ImpfUser from "./ImpfUser"
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount as ServiceAccount)
@@ -33,7 +34,7 @@ export default class ImpfBot {
             "30521",
             "Johnson&Johnson",
             "vector",
-            "false",
+            false,
             50)
           this.handleResponse(request, response)
         } else {
@@ -52,43 +53,34 @@ export default class ImpfBot {
       return
     }
 
+
     if(!response.outOfStock) {
+
       if(!request.lastCheckHadAppointments) {
-        request.lastCheckHadAppointments = true
         request.startOfCurrentAppointmentWindow = new Date()
-        
-        //find all high prio users
-        const tokens = this.users.filter((user) => {
-          return (
-            user.centerId == response.vaccinationCenterPk &&
-            user.ageOver60 == request.over60 &&
-            user.allowedVaccines[response.vaccineName] == true
-          )
-        }).map(user => {
-          return user.fcmToken
-        })
-        
-        this.notifyUsers(tokens, response)
-      } else {
-        //Check for low frequency rules: 10 appointments after 15 minutes
-        if(!request.startOfCurrentAppointmentWindow) {
-          return
-        }
-        
-        const hasLongstandingAppointments = new Date().getTime()-1000*60*15 > request.startOfCurrentAppointmentWindow.getTime()
-        if(hasLongstandingAppointments && Number(response.numberOfAppointments) > 10) {
-            const tokens = this.users.filter((user) => {
-              return (
-                user.centerId == response.vaccinationCenterPk &&
-                user.ageOver60 == request.over60 &&
-                user.frequency == Frequency.low
-              )
-            }).map(user => {
-              return user.fcmToken
-            })
-            this.notifyUsers(tokens, response)
-          }
-        }
+      }
+
+      //Find fitting users which signed up since this request had appointments
+      const users = this.users.filter(user => {
+        return (
+          user.centerId == response.vaccinationCenterPk &&
+          user.ageOver60 == request.over60 &&
+          Boolean(user.allowedVaccines[response.vaccineName]) == true &&
+          response.numberOfAppointments > user.minAppointments &&
+          (!request.lastCheckHadAppointments || (request.startOfCurrentAppointmentWindow!.getTime() < user.registrationDate.getTime()))
+        )
+      })
+
+      users.forEach(user => {
+        user.registrationDate = request.startOfCurrentAppointmentWindow!
+      })
+      
+      const tokens = users.map(user => {
+        return user.fcmToken
+      })
+      
+      this.notifyUsers(tokens, response)
+      request.lastCheckHadAppointments = true
     } else {
       request.lastCheckHadAppointments = false
       request.startOfCurrentAppointmentWindow = undefined
@@ -96,6 +88,12 @@ export default class ImpfBot {
   }
 
   notifyUsers(tokens:string[], response:ImpfResponse):void {
+    if(!tokens || tokens.length === 0) {
+      return
+    }
+    tokens.map(token=> {
+      console.log("Notifying token: "+token)
+    })
     const message = {
       notification: {
         title: "Impftermin verfügbar",
@@ -126,7 +124,7 @@ export default class ImpfBot {
   }
 
   /// Adding users --------------------------- 
-  async addSubscription(fcmToken: string, ageOver60: boolean, zip: string, frequency: Frequency, allowBiontech: boolean, allowModerna: boolean,	allowJohnson: boolean,	allowAstra: boolean): Promise<boolean> {
+  async addSubscription(fcmToken: string, ageOver60: boolean, zip: string, minAppointments: number, allowBiontech: boolean, allowModerna: boolean,	allowJohnson: boolean,	allowAstra: boolean): Promise<boolean> {
 
     const response = await this.checkTermin(ageOver60, zip)
 
@@ -139,7 +137,7 @@ export default class ImpfBot {
     allowedVaccines["Johnson&Johnson"] = allowJohnson
     allowedVaccines["AstraZeneca"] = allowAstra
 
-    const user = new ImpfUser(fcmToken, ageOver60, zip, response.vaccinationCenterPk, frequency, allowedVaccines)
+    const user = new ImpfUser(fcmToken, ageOver60, zip, response.vaccinationCenterPk, minAppointments, allowedVaccines)
     const center = new ImpfCenter(response.vaccinationCenterPk, response.vaccinationCenterZip)
     const request = new ImpfRequest(center, ageOver60)
 
@@ -220,8 +218,8 @@ export default class ImpfBot {
         result.zipcode,
         result.vaccineName,
         result.vaccineType,
-        result.outOfStock,
-        result.freeSlotSizeOnline)
+        Boolean(result.outOfStock),
+        Number(result.freeSlotSizeOnline))
     }
     return
   }

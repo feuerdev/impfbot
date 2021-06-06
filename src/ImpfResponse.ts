@@ -5,6 +5,6 @@ export default class ImpfResponse {
     public vaccinationCenterZip: string,
     public vaccineName: string,
     public vaccineType: string,
-    public outOfStock: string,
+    public outOfStock: boolean,
     public numberOfAppointments:number) { }
 }
