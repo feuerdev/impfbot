@@ -40,7 +40,8 @@ export default class ImpfBot {
       return
     }
 
-    if(!response.outOfStock) {
+    // eslint-disable-next-line no-constant-condition
+    if(true) {
       const tokens = this.users.filter((user) => {
         return (
           user.centerId == response.vaccinationCenterPk &&
