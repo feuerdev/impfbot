@@ -15,10 +15,10 @@ app.listen(3000)
  
 app.post("/api/subscribe", async function(req, res) {
 	const fcmToken:string = req.body.fcmToken
-	const age:number = req.body.age
+	const ageOver60:boolean = req.body.ageOver60
 	const zip:string = req.body.zip
 
-	const succeeded = await bot.addSubscription(fcmToken, age, zip)
+	const succeeded = await bot.addSubscription(fcmToken, ageOver60, zip)
 
 	if(succeeded) {
 		res.sendStatus(200)

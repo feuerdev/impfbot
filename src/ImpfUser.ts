@@ -2,7 +2,7 @@
 export default class ImpfUser {
 	constructor(
 		public fcmToken:string,
-		public age:number,
+		public ageOver60:boolean,
 		public zip:string,
 		public centerId:string) {}
 }

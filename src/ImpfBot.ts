@@ -29,10 +29,10 @@ export default class ImpfBot {
     setInterval(() => {
       for (const center of this.centers) {
         console.log(`Checking center at ${center.zip}`)
-        this.checkTermin(AGE_OVER_60, center.zip).then((response) => {
+        this.checkTermin(true, center.zip).then((response) => {
           this.handleResponse(response, true)
         })
-        this.checkTermin(AGE_UNDER_60, center.zip).then((response) => {
+        this.checkTermin(false, center.zip).then((response) => {
           this.handleResponse(response, false)
         })
       }
@@ -48,7 +48,7 @@ export default class ImpfBot {
       const tokens = this.users.filter((user) => {
         return (
           user.centerId == response.vaccinationCenterPk &&
-          this.ageOver60(user.age) == over60
+          user.ageOver60 == over60
         )
       }).map(user => {
         return user.fcmToken
@@ -79,15 +79,15 @@ export default class ImpfBot {
   }
 
   /// Adding users --------------------------- 
-  async addSubscription(fcmToken: string, age: number, zip: string):Promise<boolean> {
+  async addSubscription(fcmToken: string, ageOver60: boolean, zip: string):Promise<boolean> {
 
-    const response = await this.checkTermin(age, zip)
+    const response = await this.checkTermin(ageOver60, zip)
 
     if (!response) {
       return false
     }
 
-    const user = new ImpfUser(fcmToken, age, zip, response.vaccinationCenterPk)
+    const user = new ImpfUser(fcmToken, ageOver60, zip, response.vaccinationCenterPk)
     const center = new ImpfCenter(response.vaccinationCenterPk, response.vaccinationCenterZip)
 
     this.addUser(user)
@@ -124,8 +124,9 @@ export default class ImpfBot {
   }
 
 ///Main Request
-  async checkTermin(age: number, zip: string): Promise<ImpfResponse | undefined> {
-    const url = `https://www.impfportal-niedersachsen.de/portal/rest/appointments/findVaccinationCenterListFree/${zip}?stiko=&count=1&birthdate=${age}`
+  async checkTermin(ageOver60: boolean, zip: string): Promise<ImpfResponse | undefined> {
+    const wsAge = ageOver60 ? AGE_OVER_60 : AGE_UNDER_60
+    const url = `https://www.impfportal-niedersachsen.de/portal/rest/appointments/findVaccinationCenterListFree/${zip}?stiko=&count=1&birthdate=${wsAge}`
     const response = await axios.get(url).catch(error => {
       console.log(error)
     })
@@ -153,7 +154,7 @@ export default class ImpfBot {
     }
 
     if (results.length > 1) {
-      console.log(`Found more than one result for PLZ:${zip} and Age:${age}`)
+      console.log(`Found more than one result for PLZ:${zip} and age over 60:${ageOver60}`)
     }
 
     for (const result of results) {
@@ -166,18 +167,5 @@ export default class ImpfBot {
         result.outOfStock)
     }
     return
-  }
-
-/// Helpers --------------------------- 
-  groupedAge(age: number): number {
-    if (this.ageOver60(age)) {
-      return AGE_OVER_60
-    } else {
-      return AGE_UNDER_60
-    }
-  }
-
-  ageOver60(age: number): boolean {
-    return age < AGE_UNDER_60
   }
 }
