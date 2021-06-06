@@ -4,7 +4,8 @@
   "description": "Server for Impfalarm App",
   "scripts": {
     "start": "tsc && node dist/index.js",
-    "deploy": "git pull && npm install && npm start"
+    "deploy": "git pull && npm install && npm start",
+    "heroku": "npm install && npm start"
   },
   "author": "jannik@feuer.dev",
   "license": "ISC",
