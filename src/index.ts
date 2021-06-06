@@ -13,13 +13,31 @@ app.use(express.urlencoded({ extended: true }))
 bot.run()
 app.listen(3000)
  
-app.post("/api/subscribe", function(req, res) {
+app.post("/api/subscribe", async function(req, res) {
 	const fcmToken:string = req.body.fcmToken
 	const age:number = req.body.age
 	const zip:string = req.body.zip
 
-	bot.addSubscription(fcmToken, age, zip)
+	const succeeded = await bot.addSubscription(fcmToken, age, zip)
 
-	res.sendStatus(200)
+	if(succeeded) {
+		res.sendStatus(200)
+	} else {
+		res.sendStatus(400)
+	}
+
+})
+
+app.post("/api/unsubscribe", async function(req, res) {
+	const fcmToken:string = req.body.fcmToken
+
+	const succeeded = await bot.removeSubscription(fcmToken)
+
+	if(succeeded) {
+		res.sendStatus(200)
+	} else {
+		res.sendStatus(400)
+	}
+
 })
  

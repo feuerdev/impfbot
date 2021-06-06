@@ -13,14 +13,6 @@ admin.initializeApp({
 const AGE_OVER_60 = -284000400
 const AGE_UNDER_60 = -252464400
 
-/*
-  Database:
-  List of centers - id,plz
-  List of users - fcmToken,plz,age
-  List of subscriptions - fcmToken, centerId, age
-*/
-
-
 export default class ImpfBot {
 
   users: ImpfUser[] = []
@@ -53,26 +45,46 @@ export default class ImpfBot {
     }
 
     if(!response.outOfStock) {
-      this.users.filter((user) => {
+      const tokens = this.users.filter((user) => {
         return (
           user.centerId == response.vaccinationCenterPk &&
           this.ageOver60(user.age) == over60
         )
-      }).forEach((user) => {
-        console.log(`Notifying user with token: ${user.fcmToken}`)
+      }).map(user => {
+        return user.fcmToken
       })
+
+      console.log(`Notifying ${tokens.length} users`)
+      
+      const message = {
+        data: {
+          message:"Impftermin!"
+        },
+        tokens: tokens,
+      }
+      
+      admin.messaging().sendMulticast(message)
+        .then((response) => {
+          console.log(response.successCount + " messages were sent successfully")
+        })
     }
     //TODO: Implement only sending notification if last check was negative
     //TODO: Implement low prio user notification
   }
 
-/// Adding users --------------------------- 
-  async addSubscription(fcmToken: string, age: number, zip: string):Promise<void> {
+  /// Remove users --------------------------- 
+  async removeSubscription(fcmToken:string):Promise<boolean> {
+    this.removeUser(fcmToken)
+    return true
+  }
+
+  /// Adding users --------------------------- 
+  async addSubscription(fcmToken: string, age: number, zip: string):Promise<boolean> {
 
     const response = await this.checkTermin(age, zip)
 
     if (!response) {
-      return
+      return false
     }
 
     const user = new ImpfUser(fcmToken, age, zip, response.vaccinationCenterPk)
@@ -80,6 +92,7 @@ export default class ImpfBot {
 
     this.addUser(user)
     this.addCenter(center)
+    return true
   }
 
   addUser(user:ImpfUser):void {
@@ -113,15 +126,15 @@ export default class ImpfBot {
 ///Main Request
   async checkTermin(age: number, zip: string): Promise<ImpfResponse | undefined> {
     const url = `https://www.impfportal-niedersachsen.de/portal/rest/appointments/findVaccinationCenterListFree/${zip}?stiko=&count=1&birthdate=${age}`
-    const response = await axios.get(url)
+    const response = await axios.get(url).catch(error => {
+      console.log(error)
+    })
 
     //Deal with errors
     if (response == null) {
-
       return
     }
     if (response.data == null) {
-
       return
     }
 
@@ -130,15 +143,17 @@ export default class ImpfBot {
     }
 
     if (response.data.resultList == null) {
-
       return
     }
 
     const results = response.data.resultList
 
+    if (results.length === 0) {
+      return
+    }
+
     if (results.length > 1) {
       console.log(`Found more than one result for PLZ:${zip} and Age:${age}`)
-      //log 
     }
 
     for (const result of results) {
