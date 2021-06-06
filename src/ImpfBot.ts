@@ -91,7 +91,6 @@ export default class ImpfBot {
       this.notifyUsers(tokens, response)
       request.lastCheckHadAppointments = true
     } else {
-      console.log("no appointments")
       request.lastCheckHadAppointments = false
       request.startOfCurrentAppointmentWindow = undefined
     }
