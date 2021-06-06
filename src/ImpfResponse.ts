@@ -6,5 +6,5 @@ export default class ImpfResponse {
     public vaccineName: string,
     public vaccineType: string,
     public outOfStock: string,
-    public numberOfAppointments:string) { }
+    public numberOfAppointments:number) { }
 }

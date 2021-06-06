@@ -25,10 +25,24 @@ export default class ImpfBot {
 
     setInterval(() => {
       for (const request of this.requests) {
-        console.log(`Checking center at ${request.center.zip}`)
-        this.checkTermin(request.over60, request.center.zip).then((response) => {
+        if(request.center.zip == "30521") {
+          console.log("Faking Check")
+          const response = new ImpfResponse(
+            "889791349656378",
+            "Impfzentrum Hannover 4",
+            "30521",
+            "Johnson&Johnson",
+            "vector",
+            "false",
+            50)
           this.handleResponse(request, response)
-        })
+        } else {
+          console.log(`Checking center at ${request.center.zip}`)
+          this.checkTermin(request.over60, request.center.zip).then((response) => {
+            this.handleResponse(request, response)
+          })
+        }
+        
       }
     }, this.interval)
   }
