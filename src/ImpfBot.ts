@@ -53,9 +53,7 @@ export default class ImpfBot {
       return
     }
 
-
     if(!response.outOfStock) {
-
       if(!request.lastCheckHadAppointments) {
         request.startOfCurrentAppointmentWindow = new Date()
       }
@@ -97,9 +95,8 @@ export default class ImpfBot {
     const message = {
       notification: {
         title: "Impftermin verfügbar",
-        body: `${response.numberOfAppointments} freie Termine
-        Zentrum: ${response.vaccinationCenterName} - ${response.vaccinationCenterZip}
-        Impfstoff: ${response.vaccineName} - ${response.vaccineType}`,
+        body: `${response.numberOfAppointments} freie Termine\n${response.vaccinationCenterName} - ${response.vaccinationCenterZip}\n
+        ${response.vaccineName}`,
       },
       apns: {
         payload: {
