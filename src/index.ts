@@ -5,7 +5,7 @@ import dotenv from "dotenv"
 dotenv.config()
 
 
-const bot = new ImpfBot(Number(process.env.INTERVAL))
+const bot = new ImpfBot()
 const app = express()
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))

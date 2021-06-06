@@ -17,11 +17,7 @@ export default class ImpfBot {
 
   users: ImpfUser[] = []
   centers: ImpfCenter[] = []
-  interval: number
-
-  constructor(interval: number) {
-    this.interval = interval
-  }
+  interval = 5000
 
   run(): void {
     //TODO: Load users and centers from firestore
