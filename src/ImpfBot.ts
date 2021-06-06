@@ -19,12 +19,21 @@ export default class ImpfBot {
 
   users: ImpfUser[] = []
   requests: ImpfRequest[] = []
-  interval = 1000
+  interval = 5000
 
   run(): void {
+    const zips = [26160,26624,38102,29221,49681,27472,27749,27211,26721,49808,26419,38518,38642,37081,37412,48529,31787,30521,21423,29683,38350,31137,37603,26835,21337,31623,37154,26123,27793,49080,49134,27711,31224,27404,38229,31655,21684,29525,49393,27283,26919,26389,26427,38300,38440]
+    zips.forEach(zip => {
+      const center = new ImpfCenter(String(zip), String(zip))
+      const request = new ImpfRequest(center, true)
+      const request2 = new ImpfRequest(center, false)
+      this.requests.push(request, request2)
+    })
+    
     //TODO: Load users and centers from firestore
 
     setInterval(() => {
+      console.log(new Date().toString() + " - Checking for appointments")
       for (const request of this.requests) {
         // if(request.center.zip == "30521") {
         //   console.log("Faking Check")
@@ -38,7 +47,7 @@ export default class ImpfBot {
         //     50)
         //   this.handleResponse(request, response)
         // } else {
-          console.log(`Checking center at ${request.center.zip}`)
+          // console.log(`Checking center at ${request.center.zip}`)
           this.checkTermin(request.over60, request.center.zip).then((response) => {
             this.handleResponse(request, response)
           })
@@ -57,6 +66,8 @@ export default class ImpfBot {
       if(!request.lastCheckHadAppointments) {
         request.startOfCurrentAppointmentWindow = new Date()
       }
+
+      console.log(response.vaccinationCenterZip + " " + (request.over60 ? "Ü60" : "U60") + " " + response.vaccinationCenterName + " hat Termine")
 
       //Find fitting users which signed up since this request had appointments
       const users = this.users.filter(user => {
@@ -80,6 +91,7 @@ export default class ImpfBot {
       this.notifyUsers(tokens, response)
       request.lastCheckHadAppointments = true
     } else {
+      console.log("no appointments")
       request.lastCheckHadAppointments = false
       request.startOfCurrentAppointmentWindow = undefined
     }
