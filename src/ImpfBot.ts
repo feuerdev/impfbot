@@ -3,11 +3,12 @@ import axios from "axios"
 import admin, { ServiceAccount } from "firebase-admin"
 import serviceAccount from "./firebase-service-account.json"
 import ImpfCenter from "./ImpfCenter"
+import ImpfRequest from "./ImpfRequest"
 import ImpfResponse from "./ImpfResponse"
-import ImpfUser from "./ImpfUser"
+import ImpfUser, { Frequency } from "./ImpfUser"
 
 admin.initializeApp({
-	credential: admin.credential.cert(serviceAccount as ServiceAccount)
+  credential: admin.credential.cert(serviceAccount as ServiceAccount)
 })
 
 const AGE_OVER_60 = -284000400
@@ -16,67 +17,99 @@ const AGE_UNDER_60 = -252464400
 export default class ImpfBot {
 
   users: ImpfUser[] = []
-  centers: ImpfCenter[] = []
+  requests: ImpfRequest[] = []
   interval = 5000
 
   run(): void {
     //TODO: Load users and centers from firestore
 
+    // this.sendPush()
     setInterval(() => {
-      for (const center of this.centers) {
-        console.log(`Checking center at ${center.zip}`)
-        this.checkTermin(true, center.zip).then((response) => {
-          this.handleResponse(response, true)
-        })
-        this.checkTermin(false, center.zip).then((response) => {
-          this.handleResponse(response, false)
+      for (const request of this.requests) {
+        console.log(`Checking center at ${request.center.zip}`)
+        this.checkTermin(request.over60, request.center.zip).then((response) => {
+          this.handleResponse(request, response)
         })
       }
     }, this.interval)
   }
 
-  handleResponse(response:ImpfResponse|undefined, over60:boolean):void {
-    if(!response) {
+  handleResponse(request:ImpfRequest, response: ImpfResponse | undefined): void {
+    if (!response) {
       return
     }
 
-    // eslint-disable-next-line no-constant-condition
-    if(true) {
-      const tokens = this.users.filter((user) => {
-        return (
-          user.centerId == response.vaccinationCenterPk &&
-          user.ageOver60 == over60
-        )
-      }).map(user => {
-        return user.fcmToken
-      })
-
-      console.log(`Notifying ${tokens.length} users`)
-      
-      const message = {
-        data: {
-          message:"Impftermin!"
-        },
-        tokens: tokens,
-      }
-      
-      admin.messaging().sendMulticast(message)
-        .then((response) => {
-          console.log(response.successCount + " messages were sent successfully")
+    if(!response.outOfStock) {
+      if(!request.lastCheckHadAppointments) {
+        request.lastCheckHadAppointments = true
+        request.startOfCurrentAppointmentWindow = new Date()
+        
+        //find all high prio users
+        const tokens = this.users.filter((user) => {
+          return (
+            user.centerId == response.vaccinationCenterPk &&
+            user.ageOver60 == request.over60
+          )
+        }).map(user => {
+          return user.fcmToken
         })
+
+        this.notifyUsers(tokens, response)
+      } else {
+        if(
+          ((new Date().getTime()-1000*60*15) > request.startOfCurrentAppointmentWindow!.getTime()) &&
+          (Number(response.numberOfAppointments) > 10)
+          ) {
+            const tokens = this.users.filter((user) => {
+              return (
+                user.centerId == response.vaccinationCenterPk &&
+                user.ageOver60 == request.over60 &&
+                user.frequency == Frequency.low
+              )
+            }).map(user => {
+              return user.fcmToken
+            })
+            this.notifyUsers(tokens, response)
+          }
+        }
+    } else {
+      request.lastCheckHadAppointments = false
+      request.startOfCurrentAppointmentWindow = undefined
     }
-    //TODO: Implement only sending notification if last check was negative
-    //TODO: Implement low prio user notification
+  }
+
+  notifyUsers(tokens:string[], response:ImpfResponse):void {
+    const message = {
+      notification: {
+        title: "Impftermin verfügbar",
+        body: `${response.numberOfAppointments} freie Termine
+        Zentrum: ${response.vaccinationCenterName} - ${response.vaccinationCenterZip}
+        Impfstoff: ${response.vaccineName} - ${response.vaccineType}`,
+      },
+      apns: {
+        payload: {
+          aps: {
+            sound: "default"
+          },
+        },
+      },
+      tokens: tokens,
+    }
+
+    admin.messaging().sendMulticast(message)
+      .then((response) => {
+        console.log(response.successCount + " messages were sent successfully")
+      })
   }
 
   /// Remove users --------------------------- 
-  async removeSubscription(fcmToken:string):Promise<boolean> {
+  async removeSubscription(fcmToken: string): Promise<boolean> {
     this.removeUser(fcmToken)
     return true
   }
 
   /// Adding users --------------------------- 
-  async addSubscription(fcmToken: string, ageOver60: boolean, zip: string):Promise<boolean> {
+  async addSubscription(fcmToken: string, ageOver60: boolean, zip: string, frequency: Frequency): Promise<boolean> {
 
     const response = await this.checkTermin(ageOver60, zip)
 
@@ -84,15 +117,16 @@ export default class ImpfBot {
       return false
     }
 
-    const user = new ImpfUser(fcmToken, ageOver60, zip, response.vaccinationCenterPk)
+    const user = new ImpfUser(fcmToken, ageOver60, zip, response.vaccinationCenterPk, frequency)
     const center = new ImpfCenter(response.vaccinationCenterPk, response.vaccinationCenterZip)
+    const request = new ImpfRequest(center, ageOver60)
 
     this.addUser(user)
-    this.addCenter(center)
+    this.addRequest(request)
     return true
   }
 
-  addUser(user:ImpfUser):void {
+  addUser(user: ImpfUser): void {
     this.removeUser(user.fcmToken)
     //TODO: remove user from firestore
 
@@ -100,19 +134,22 @@ export default class ImpfBot {
     //TODO: add user to firestore
   }
 
-  addCenter(center:ImpfCenter):void {
-    const alreadyAdded = this.centers.find(c => {
-      return c.id === center.id
+  addRequest(request: ImpfRequest): void {
+    const alreadyAdded = this.requests.find(r => {
+      return (
+        r.center.zip === request.center.zip &&
+        r.over60 == request.over60
+        )
     })
-    if(!alreadyAdded) {
-      this.centers.push(center)
-      //TODO: add center to firestore
+    if (!alreadyAdded) {
+      this.requests.push(request)
+      //TODO: add request to firestore
     }
   }
 
-  removeUser(fcmToken:string):void {
+  removeUser(fcmToken: string): void {
     this.users = this.users.filter((user) => {
-      if(user.fcmToken === fcmToken) {
+      if (user.fcmToken === fcmToken) {
         return false
       } else {
         return true
@@ -120,7 +157,7 @@ export default class ImpfBot {
     })
   }
 
-///Main Request
+  ///Main Request
   async checkTermin(ageOver60: boolean, zip: string): Promise<ImpfResponse | undefined> {
     const wsAge = ageOver60 ? AGE_OVER_60 : AGE_UNDER_60
     const url = `https://www.impfportal-niedersachsen.de/portal/rest/appointments/findVaccinationCenterListFree/${zip}?stiko=&count=1&birthdate=${wsAge}`
@@ -161,7 +198,8 @@ export default class ImpfBot {
         result.zipcode,
         result.vaccineName,
         result.vaccineType,
-        result.outOfStock)
+        result.outOfStock,
+        result.freeSlotSizeOnline)
     }
     return
   }
