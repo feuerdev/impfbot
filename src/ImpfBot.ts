@@ -23,7 +23,6 @@ export default class ImpfBot {
   run(): void {
     //TODO: Load users and centers from firestore
 
-    // this.sendPush()
     setInterval(() => {
       for (const request of this.requests) {
         console.log(`Checking center at ${request.center.zip}`)
@@ -48,18 +47,22 @@ export default class ImpfBot {
         const tokens = this.users.filter((user) => {
           return (
             user.centerId == response.vaccinationCenterPk &&
-            user.ageOver60 == request.over60
+            user.ageOver60 == request.over60 &&
+            user.allowedVaccines[response.vaccineName] == true
           )
         }).map(user => {
           return user.fcmToken
         })
-
+        
         this.notifyUsers(tokens, response)
       } else {
-        if(
-          ((new Date().getTime()-1000*60*15) > request.startOfCurrentAppointmentWindow!.getTime()) &&
-          (Number(response.numberOfAppointments) > 10)
-          ) {
+        //Check for low frequency rules: 10 appointments after 15 minutes
+        if(!request.startOfCurrentAppointmentWindow) {
+          return
+        }
+        
+        const hasLongstandingAppointments = new Date().getTime()-1000*60*15 > request.startOfCurrentAppointmentWindow.getTime()
+        if(hasLongstandingAppointments && Number(response.numberOfAppointments) > 10) {
             const tokens = this.users.filter((user) => {
               return (
                 user.centerId == response.vaccinationCenterPk &&
@@ -109,15 +112,20 @@ export default class ImpfBot {
   }
 
   /// Adding users --------------------------- 
-  async addSubscription(fcmToken: string, ageOver60: boolean, zip: string, frequency: Frequency): Promise<boolean> {
+  async addSubscription(fcmToken: string, ageOver60: boolean, zip: string, frequency: Frequency, allowBiontech: boolean, allowModerna: boolean,	allowJohnson: boolean,	allowAstra: boolean): Promise<boolean> {
 
     const response = await this.checkTermin(ageOver60, zip)
 
     if (!response) {
       return false
     }
+    const allowedVaccines:Record<string, boolean> = {}
+    allowedVaccines["BioNtech"] = allowBiontech
+    allowedVaccines["Moderna"] = allowModerna
+    allowedVaccines["Johnson&Johnson"] = allowJohnson
+    allowedVaccines["AstraZeneca"] = allowAstra
 
-    const user = new ImpfUser(fcmToken, ageOver60, zip, response.vaccinationCenterPk, frequency)
+    const user = new ImpfUser(fcmToken, ageOver60, zip, response.vaccinationCenterPk, frequency, allowedVaccines)
     const center = new ImpfCenter(response.vaccinationCenterPk, response.vaccinationCenterZip)
     const request = new ImpfRequest(center, ageOver60)
 

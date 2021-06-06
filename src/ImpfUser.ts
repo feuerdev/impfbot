@@ -10,5 +10,6 @@ export default class ImpfUser {
 		public ageOver60:boolean,
 		public zip:string,
 		public centerId:string,
-		public frequency:Frequency) {}
+		public frequency:Frequency,
+		public allowedVaccines:Record<string, boolean>) {}
 }
