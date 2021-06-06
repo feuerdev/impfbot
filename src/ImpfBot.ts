@@ -187,8 +187,8 @@ export default class ImpfBot {
   ///Main Request
   async checkTermin(ageOver60: boolean, zip: string): Promise<ImpfResponse | undefined> {
     const wsAge = ageOver60 ? AGE_OVER_60 : AGE_UNDER_60
-    //TODO: nimm die count=2 wieder raus
-    const url = `https://www.impfportal-niedersachsen.de/portal/rest/appointments/findVaccinationCenterListFree/${zip}?stiko=&count=2&birthdate=${wsAge}`
+
+    const url = `https://www.impfportal-niedersachsen.de/portal/rest/appointments/findVaccinationCenterListFree/${zip}?stiko=&count=1&birthdate=${wsAge}`
     const response = await axios.get(url).catch(error => {
       console.log(error)
     })
