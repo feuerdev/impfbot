@@ -139,13 +139,14 @@ export default class ImpfBot {
 
   /// Remove users --------------------------- 
   async removeSubscription(fcmToken: string): Promise<boolean> {
+    //TODO: remove from firestore
     this.removeUser(fcmToken)
     return true
   }
 
   /// Adding users --------------------------- 
   async addSubscription(fcmToken: string, zip: string, minAppointments: number, notifyForAllCenters:boolean, allowBiontech: boolean, allowModerna: boolean,	allowJohnson: boolean,	allowAstra: boolean): Promise<boolean> {
-
+    await this.removeSubscription(fcmToken)
     const response = await this.checkTermin(zip)
 
     if (!response) {
@@ -163,13 +164,13 @@ export default class ImpfBot {
 
     this.addUser(user)
     this.addRequest(request)
+
+    console.log(`Added 1 subscription for ${user.zip} - ${fcmToken}`)
+    console.log(`Total subscriptions: ${this.users.length}`)
     return true
   }
 
   addUser(user: ImpfUser): void {
-    this.removeUser(user.fcmToken)
-    //TODO: remove user from firestore
-
     this.users.push(user)
     //TODO: add user to firestore
   }
@@ -185,6 +186,7 @@ export default class ImpfBot {
   }
 
   removeUser(fcmToken: string): void {
+    const oldLength = this.users.length
     this.users = this.users.filter((user) => {
       if (user.fcmToken === fcmToken) {
         return false
@@ -192,6 +194,9 @@ export default class ImpfBot {
         return true
       }
     })
+    const newLength = this.users.length
+    console.log(`Removed ${oldLength - newLength} subscription - ${fcmToken}`)
+    console.log(`Total subscriptions: ${this.users.length}`)
   }
 
   ///Main Request
