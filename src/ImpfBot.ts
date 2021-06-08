@@ -116,7 +116,7 @@ export default class ImpfBot {
     const message = {
       notification: {
         title: "Impftermin verfügbar",
-        body: `${response.numberOfAppointments} ${response.numberOfAppointments > 1 ? "freier Termin" : "freie Termine"}\n${response.vaccinationCenterName} - ${response.vaccinationCenterZip}\n${response.vaccineName}`,
+        body: `${response.numberOfAppointments} ${response.numberOfAppointments === 1 ? "freier Termin" : "freie Termine"}\n${response.vaccinationCenterName} - ${response.vaccinationCenterZip}\n${response.vaccineName}`,
       },
       apns: {
         payload: {
@@ -198,7 +198,7 @@ export default class ImpfBot {
   async checkTermin(zip: string): Promise<ImpfResponse | undefined> {
     const url = `https://www.impfportal-niedersachsen.de/portal/rest/appointments/findVaccinationCenterListFree/${zip}?stiko=&count=1&birthdate=${AGE_UNDER_60}`
     const response = await axios.get(url).catch(error => {
-      console.log(error)
+      console.log(`Request ${zip} failed: ${error.toString()}`)
     })
 
     //Deal with errors
