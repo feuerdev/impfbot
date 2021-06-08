@@ -12,46 +12,47 @@ admin.initializeApp({
   credential: admin.credential.cert(serviceAccount as ServiceAccount)
 })
 
-const AGE_OVER_60 = -284000400
+//const AGE_OVER_60 = -284000400
 const AGE_UNDER_60 = -252464400
 
 export default class ImpfBot {
 
   users: ImpfUser[] = []
   requests: ImpfRequest[] = []
-  interval = 15000
+  interval = 30000
 
   run(): void {
-    // const zips = [26160,26624,38102,29221,49681,27472,27749,27211,26721,49808,26419,38518,38642,37081,37412,48529,31787,30521,21423,29683,38350,31137,37603,26835,21337,31623,37154,26123,27793,49080,49134,27711,31224,27404,38229,31655,21684,29525,49393,27283,26919,26389,26427,38300,38440]
-    // zips.forEach(zip => {
-    //   const center = new ImpfCenter(String(zip), String(zip))
-    //   const request = new ImpfRequest(center, true)
-    //   const request2 = new ImpfRequest(center, false)
-    //   this.requests.push(request, request2)
-    // })
+
+    //Manually load all Centers
+    const zips = [26160,26624,38102,29221,49681,27472,27749,27211,26721,49808,26419,38518,38642,37081,37412,48529,31787,30521,21423,29683,38350,31137,37603,26835,21337,31623,37154,26123,27793,49080,49134,27711,31224,27404,38229,31655,21684,29525,49393,27283,26919,26389,26427,38300,38440]
+    zips.forEach(zip => {
+      const center = new ImpfCenter(String(zip))
+      const request = new ImpfRequest(center)
+      this.requests.push(request)
+    })
     
     //TODO: Load users and centers from firestore
 
     setInterval(() => {
       console.log(new Date().toString() + " - Checking for appointments")
       for (const request of this.requests) {
-        // if(request.center.zip == "30521") {
-        //   console.log("Faking Check")
-        //   const response = new ImpfResponse(
-        //     "889791349656378",
-        //     "Impfzentrum Hannover 4",
-        //     "30521",
-        //     "Johnson&Johnson",
-        //     "vector",
-        //     false,
-        //     50)
-        //   this.handleResponse(request, response)
-        // } else {
+        if(request.center.zip == "30521") {
+          console.log("Faking Check")
+          const response = new ImpfResponse(
+            "889791349656378",
+            "Impfzentrum Hannover 4",
+            "30521",
+            "Johnson&Johnson",
+            "vector",
+            false,
+            50)
+          this.handleResponse(request, response)
+        } else {
           // console.log(`Checking center at ${request.center.zip}`)
-          this.checkTermin(request.over60, request.center.zip).then((response) => {
+          this.checkTermin(request.center.zip).then((response) => {
             this.handleResponse(request, response)
           })
-        // }
+        }
         
       }
     }, this.interval)
@@ -67,13 +68,12 @@ export default class ImpfBot {
         request.startOfCurrentAppointmentWindow = new Date()
       }
 
-      console.log(response.vaccinationCenterZip + " " + (request.over60 ? "Ü60" : "U60") + " " + response.vaccinationCenterName + " hat Termine")
+      console.log(`${response.vaccinationCenterZip} - ${response.vaccinationCenterName} hat ${response.numberOfAppointments} Termine`)
 
       //Find fitting users which signed up since this request had appointments
       const users = this.users.filter(user => {
         return (
-          String(user.centerId) === String(response.vaccinationCenterPk) &&
-          user.ageOver60 === request.over60 &&
+          (user.notifyForAllCenters || (String(user.centerId) === String(response.vaccinationCenterPk))) &&
           String(user.allowedVaccines[response.vaccineName]) === "true" &&
           response.numberOfAppointments > user.minAppointments &&
           (!request.lastCheckHadAppointments || (request.startOfCurrentAppointmentWindow!.getTime() < user.registrationDate.getTime()))
@@ -110,6 +110,9 @@ export default class ImpfBot {
       },
       apns: {
         payload: {
+          headers: {
+            "apns-collapse-id": response.vaccinationCenterPk
+          },
           aps: {
             sound: "default"
           },
@@ -131,9 +134,9 @@ export default class ImpfBot {
   }
 
   /// Adding users --------------------------- 
-  async addSubscription(fcmToken: string, ageOver60: boolean, zip: string, minAppointments: number, allowBiontech: boolean, allowModerna: boolean,	allowJohnson: boolean,	allowAstra: boolean): Promise<boolean> {
+  async addSubscription(fcmToken: string, zip: string, minAppointments: number, notifyForAllCenters:boolean, allowBiontech: boolean, allowModerna: boolean,	allowJohnson: boolean,	allowAstra: boolean): Promise<boolean> {
 
-    const response = await this.checkTermin(ageOver60, zip)
+    const response = await this.checkTermin(zip)
 
     if (!response) {
       return false
@@ -144,9 +147,9 @@ export default class ImpfBot {
     allowedVaccines["Johnson&Johnson"] = allowJohnson
     allowedVaccines["AstraZeneca"] = allowAstra
 
-    const user = new ImpfUser(fcmToken, ageOver60, zip, response.vaccinationCenterPk, minAppointments, allowedVaccines)
-    const center = new ImpfCenter(response.vaccinationCenterPk, response.vaccinationCenterZip)
-    const request = new ImpfRequest(center, ageOver60)
+    const user = new ImpfUser(fcmToken, zip, response.vaccinationCenterPk, minAppointments, notifyForAllCenters, allowedVaccines)
+    const center = new ImpfCenter(response.vaccinationCenterZip)
+    const request = new ImpfRequest(center)
 
     this.addUser(user)
     this.addRequest(request)
@@ -163,10 +166,7 @@ export default class ImpfBot {
 
   addRequest(request: ImpfRequest): void {
     const alreadyAdded = this.requests.find(r => {
-      return (
-        r.center.zip === request.center.zip &&
-        r.over60 == request.over60
-        )
+      return r.center.zip === request.center.zip
     })
     if (!alreadyAdded) {
       this.requests.push(request)
@@ -185,10 +185,8 @@ export default class ImpfBot {
   }
 
   ///Main Request
-  async checkTermin(ageOver60: boolean, zip: string): Promise<ImpfResponse | undefined> {
-    const wsAge = ageOver60 ? AGE_OVER_60 : AGE_UNDER_60
-
-    const url = `https://www.impfportal-niedersachsen.de/portal/rest/appointments/findVaccinationCenterListFree/${zip}?stiko=&count=1&birthdate=${wsAge}`
+  async checkTermin(zip: string): Promise<ImpfResponse | undefined> {
+    const url = `https://www.impfportal-niedersachsen.de/portal/rest/appointments/findVaccinationCenterListFree/${zip}?stiko=&count=1&birthdate=${AGE_UNDER_60}`
     const response = await axios.get(url).catch(error => {
       console.log(error)
     })
@@ -216,7 +214,7 @@ export default class ImpfBot {
     }
 
     if (results.length > 1) {
-      console.log(`Found more than one result for PLZ:${zip} and age over 60:${ageOver60}`)
+      console.log(`Found more than one result for PLZ:${zip}`)
     }
 
     for (const result of results) {
