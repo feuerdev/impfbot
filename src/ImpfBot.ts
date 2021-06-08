@@ -19,7 +19,7 @@ export default class ImpfBot {
 
   users: ImpfUser[] = []
   requests: ImpfRequest[] = []
-  interval = 30000
+  interval = 5000
 
   run(): void {
 
@@ -116,7 +116,7 @@ export default class ImpfBot {
     const message = {
       notification: {
         title: "Impftermin verfügbar",
-        body: `${response.numberOfAppointments} ${response.numberOfAppointments === 1 ? "freier Termin" : "freie Termine"}\n${response.vaccinationCenterName} - ${response.vaccinationCenterZip}\n${response.vaccineName}`,
+        body: `${response.numberOfAppointments} ${response.numberOfAppointments <= 1 ? "freier Termin" : "freie Termine"}\n${response.vaccinationCenterName} - ${response.vaccinationCenterZip}\n${response.vaccineName}`,
       },
       apns: {
         payload: {
