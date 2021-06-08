@@ -19,7 +19,7 @@ export default class ImpfBot {
 
   users: ImpfUser[] = []
   requests: ImpfRequest[] = []
-  interval = 30000
+  interval = 5000
 
   run(): void {
 
@@ -39,8 +39,8 @@ export default class ImpfBot {
         if(request.center.zip == "30521") {
           console.log("Faking Check")
           const response = new ImpfResponse(
-            "889791349656378",
-            "Impfzentrum Hannover 4",
+            "915745288482899",
+            "Impfzentrum Hannover 1",
             "30521",
             "Johnson&Johnson",
             "vector",
