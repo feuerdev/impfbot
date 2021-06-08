@@ -11,6 +11,8 @@ import ImpfUser from "./ImpfUser"
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount as ServiceAccount)
 })
+const db = admin.firestore()
+
 
 //const AGE_OVER_60 = -284000400
 const AGE_UNDER_60 = -252464400
@@ -21,7 +23,7 @@ export default class ImpfBot {
   requests: ImpfRequest[] = []
   interval = 5000
 
-  run(): void {
+  async run(): Promise<void> {
 
     //Manually load all Centers
     const zips = [26160,26624,38102,29221,49681,27472,27749,27211,26721,49808,26419,38518,38642,37081,37412,48529,31787,30521,21423,29683,38350,31137,37603,26835,21337,31623,37154,26123,27793,49080,49134,27711,31224,27404,38229,31655,21684,29525,49393,27283,26919,26389,26427,38300,38440]
@@ -31,7 +33,13 @@ export default class ImpfBot {
       this.requests.push(request)
     })
     
-    //TODO: Load users and centers from firestore
+    const savedSubscriptions = await db.collection("subscriptions").get()
+    savedSubscriptions.forEach((doc) => {
+      const data = doc.data()
+      const user = new ImpfUser(data.fcmToken, data.zip, data.centerId, data.minAppointments, data.notifyForAllCenters, data.allowedVaccines)
+      console.log("Loaded user: "+user.fcmToken)
+      this.users.push(user)
+    })
 
     setInterval(() => {
       console.log(new Date().toString() + " - Checking for appointments")
@@ -139,7 +147,6 @@ export default class ImpfBot {
 
   /// Remove users --------------------------- 
   async removeSubscription(fcmToken: string): Promise<boolean> {
-    //TODO: remove from firestore
     this.removeUser(fcmToken)
     return true
   }
@@ -172,7 +179,7 @@ export default class ImpfBot {
 
   addUser(user: ImpfUser): void {
     this.users.push(user)
-    //TODO: add user to firestore
+    db.collection("subscriptions").doc(user.fcmToken).set(JSON.parse(JSON.stringify(user)))
   }
 
   addRequest(request: ImpfRequest): void {
@@ -181,7 +188,7 @@ export default class ImpfBot {
     })
     if (!alreadyAdded) {
       this.requests.push(request)
-      //TODO: add request to firestore
+      db.collection("requests").doc("id" + (new Date()).getTime()).set(JSON.parse(JSON.stringify(request)))
     }
   }
 
@@ -197,6 +204,7 @@ export default class ImpfBot {
     const newLength = this.users.length
     console.log(`Removed ${oldLength - newLength} subscription - ${fcmToken}`)
     console.log(`Total subscriptions: ${this.users.length}`)
+    db.collection("subscriptions").doc(fcmToken).delete()
   }
 
   ///Main Request
