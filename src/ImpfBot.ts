@@ -50,7 +50,7 @@ export default class ImpfBot {
         } else if(request.center.zip == "26160") {
           console.log("Faking Check")
           const response = new ImpfResponse(
-            "915745288482899",
+            "123",
             "Fake 2",
             "26160",
             "Moderna",
@@ -116,7 +116,7 @@ export default class ImpfBot {
     const message = {
       notification: {
         title: "Impftermin verfügbar",
-        body: `${response.numberOfAppointments} freie Termine\n${response.vaccinationCenterName} - ${response.vaccinationCenterZip}\n${response.vaccineName}`,
+        body: `${response.numberOfAppointments} ${response.numberOfAppointments > 1 ? "freier Termin" : "freie Termine"}\n${response.vaccinationCenterName} - ${response.vaccinationCenterZip}\n${response.vaccineName}`,
       },
       apns: {
         payload: {
