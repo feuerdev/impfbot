@@ -21,7 +21,7 @@ export default class ImpfBot {
 
   users: ImpfUser[] = []
   requests: ImpfRequest[] = []
-  interval = 5000
+  interval = 30000
 
   async run(): Promise<void> {
 
