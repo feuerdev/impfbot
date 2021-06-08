@@ -36,34 +36,34 @@ export default class ImpfBot {
     setInterval(() => {
       console.log(new Date().toString() + " - Checking for appointments")
       for (const request of this.requests) {
-        if(request.center.zip == "30521") {
-          console.log("Faking Check")
-          const response = new ImpfResponse(
-            "915745288482899",
-            "Fake 1",
-            "30521",
-            "Johnson&Johnson",
-            "vector",
-            false,
-            50)
-          this.handleResponse(request, response)
-        } else if(request.center.zip == "26160") {
-          console.log("Faking Check")
-          const response = new ImpfResponse(
-            "123",
-            "Fake 2",
-            "26160",
-            "Moderna",
-            "mRNA",
-            false,
-            1)
-          this.handleResponse(request, response)
-        } else {
+        // if(request.center.zip == "30521") {
+        //   console.log("Faking Check")
+        //   const response = new ImpfResponse(
+        //     "915745288482899",
+        //     "Fake 1",
+        //     "30521",
+        //     "Johnson&Johnson",
+        //     "vector",
+        //     false,
+        //     50)
+        //   this.handleResponse(request, response)
+        // } else if(request.center.zip == "26160") {
+        //   console.log("Faking Check")
+        //   const response = new ImpfResponse(
+        //     "123",
+        //     "Fake 2",
+        //     "26160",
+        //     "Moderna",
+        //     "mRNA",
+        //     false,
+        //     1)
+        //   this.handleResponse(request, response)
+        // } else {
           // console.log(`Checking center at ${request.center.zip}`)
           this.checkTermin(request.center.zip).then((response) => {
             this.handleResponse(request, response)
           })
-        }
+        // }
       }
     }, this.interval)
   }
