@@ -73,7 +73,7 @@ export default class ImpfBot {
       //Find fitting users which signed up since this request had appointments
       const users = this.users.filter(user => {
         return (
-          (user.notifyForAllCenters || (String(user.centerId) === String(response.vaccinationCenterPk))) &&
+          (String(user.notifyForAllCenters) === "true" || (String(user.centerId) === String(response.vaccinationCenterPk))) &&
           String(user.allowedVaccines[response.vaccineName]) === "true" &&
           response.numberOfAppointments > user.minAppointments &&
           (!request.lastCheckHadAppointments || (request.startOfCurrentAppointmentWindow!.getTime() < user.registrationDate.getTime()))
