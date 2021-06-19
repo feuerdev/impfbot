@@ -87,7 +87,7 @@ export default class ImpfBot {
           (String(user.notifyForAllCenters) === "true" || (String(user.centerId) === String(response.vaccinationCenterPk))) &&
           String(user.allowedVaccines[response.vaccineName]) === "true" &&
           response.numberOfAppointments >= user.minAppointments &&
-          request.over60 === user.over60 &&
+          String(request.over60) === String(user.over60) &&
           (!request.lastCheckHadAppointments || (request.startOfCurrentAppointmentWindow!.getTime() < user.registrationDate.getTime()))
         )
       })
