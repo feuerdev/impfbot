@@ -17,6 +17,7 @@ console.log("Impfbot started")
 app.post("/api/subscribe", async function(req, res) {
 	const fcmToken:string = req.body.fcmToken
 	const zip:string = req.body.zip
+	const over60:boolean = req.body.over60
 	const allowBiontech:boolean = req.body.allowBiontech
 	const allowModerna:boolean = req.body.allowModerna
 	const allowJohnson:boolean = req.body.allowJohnson
@@ -24,7 +25,7 @@ app.post("/api/subscribe", async function(req, res) {
 	const minAppointments:number = req.body.minAppointments
 	const notifyForAllCenters:boolean = req.body.notifyForAllCenters
 
-	const succeeded = await bot.addSubscription(fcmToken, zip, minAppointments, notifyForAllCenters, allowBiontech, allowModerna,	allowJohnson,	allowAstra)
+	const succeeded = await bot.addSubscription(fcmToken, zip, over60, minAppointments, notifyForAllCenters, allowBiontech, allowModerna,	allowJohnson,	allowAstra)
 
 	if(succeeded) {
 		res.sendStatus(200)

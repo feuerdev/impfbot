@@ -14,14 +14,15 @@ admin.initializeApp({
 const db = admin.firestore()
 
 
-//const AGE_OVER_60 = -284000400
-const AGE_UNDER_60 = -252464400
+const AGE_OVER_60 = -1262307600000
+const AGE_UNDER_60 = 730508400000
 
 export default class ImpfBot {
 
   users: ImpfUser[] = []
   requests: ImpfRequest[] = []
-  interval = 30000
+  intervalUnder60 = 30000
+  intervalOver60 = 60000*60
 
   async run(): Promise<void> {
 
@@ -29,51 +30,43 @@ export default class ImpfBot {
     const zips = [26160,26624,38102,29221,49681,27472,27749,27211,26721,49808,26419,38518,38642,37081,37412,48529,31787,30521,21423,29683,38350,31137,37603,26835,21337,31623,37154,26123,27793,49080,49134,27711,31224,27404,38229,31655,21684,29525,49393,27283,26919,26389,26427,38300,38440]
     zips.forEach(zip => {
       const center = new ImpfCenter(String(zip))
-      const request = new ImpfRequest(center)
-      this.requests.push(request)
+      const requestYoung = new ImpfRequest(center, false)
+      const requestOld = new ImpfRequest(center, true)
+      this.requests.push(requestYoung, requestOld)
     })
     
     const savedSubscriptions = await db.collection("subscriptions").get()
     savedSubscriptions.forEach((doc) => {
       const data = doc.data()
-      const user = new ImpfUser(data.fcmToken, data.zip, data.centerId, data.minAppointments, data.notifyForAllCenters, data.allowedVaccines)
+      const user = new ImpfUser(data.fcmToken, data.zip, data.over60, data.centerId, data.minAppointments, data.notifyForAllCenters, data.allowedVaccines)
       console.log("Loaded user: "+user.fcmToken)
       this.users.push(user)
     })
 
+    //Fast Interval (under 60)
     setInterval(() => {
       console.log(new Date().toString() + " - Checking for appointments")
-      for (const request of this.requests) {
-        // if(request.center.zip == "30521") {
-        //   console.log("Faking Check")
-        //   const response = new ImpfResponse(
-        //     "915745288482899",
-        //     "Fake 1",
-        //     "30521",
-        //     "Johnson&Johnson",
-        //     "vector",
-        //     false,
-        //     50)
-        //   this.handleResponse(request, response)
-        // } else if(request.center.zip == "26160") {
-        //   console.log("Faking Check")
-        //   const response = new ImpfResponse(
-        //     "123",
-        //     "Fake 2",
-        //     "26160",
-        //     "Moderna",
-        //     "mRNA",
-        //     false,
-        //     1)
-        //   this.handleResponse(request, response)
-        // } else {
-          // console.log(`Checking center at ${request.center.zip}`)
-          this.checkTermin(request.center.zip).then((response) => {
-            this.handleResponse(request, response)
-          })
-        // }
-      }
-    }, this.interval)
+      this.requests.filter(request => {
+        return !request.over60
+      }).forEach(request => {
+        this.checkTermin(request.center.zip, request.over60).then((response) => {
+          this.handleResponse(request, response)
+        })
+      })
+    }, this.intervalUnder60)
+
+    //Slow Interval (over 60)
+    setInterval(() => {
+      console.log(new Date().toString() + " - Checking for appointments over 60")
+      this.requests.filter(request => {
+        return request.over60
+      }).forEach(request => {
+        this.checkTermin(request.center.zip, request.over60).then((response) => {
+          this.handleResponse(request, response)
+        })
+      })
+    }, this.intervalOver60)
+
   }
 
   handleResponse(request:ImpfRequest, response: ImpfResponse | undefined): void {
@@ -86,7 +79,7 @@ export default class ImpfBot {
         request.startOfCurrentAppointmentWindow = new Date()
       }
 
-      console.log(`${response.vaccinationCenterZip} - ${response.vaccinationCenterName} hat ${response.numberOfAppointments} Termine`)
+      console.log(`${response.vaccinationCenterZip} - ${request.over60 ? "Ü60" : "U60"} - ${response.vaccinationCenterName} hat ${response.numberOfAppointments} Termine`)
 
       //Find fitting users which signed up since this request had appointments
       const users = this.users.filter(user => {
@@ -94,6 +87,7 @@ export default class ImpfBot {
           (String(user.notifyForAllCenters) === "true" || (String(user.centerId) === String(response.vaccinationCenterPk))) &&
           String(user.allowedVaccines[response.vaccineName]) === "true" &&
           response.numberOfAppointments >= user.minAppointments &&
+          request.over60 === user.over60 &&
           (!request.lastCheckHadAppointments || (request.startOfCurrentAppointmentWindow!.getTime() < user.registrationDate.getTime()))
         )
       })
@@ -152,9 +146,9 @@ export default class ImpfBot {
   }
 
   /// Adding users --------------------------- 
-  async addSubscription(fcmToken: string, zip: string, minAppointments: number, notifyForAllCenters:boolean, allowBiontech: boolean, allowModerna: boolean,	allowJohnson: boolean,	allowAstra: boolean): Promise<boolean> {
+  async addSubscription(fcmToken: string, zip: string, over60:boolean, minAppointments: number, notifyForAllCenters:boolean, allowBiontech: boolean, allowModerna: boolean,	allowJohnson: boolean,	allowAstra: boolean): Promise<boolean> {
     await this.removeSubscription(fcmToken)
-    const response = await this.checkTermin(zip)
+    const response = await this.checkTermin(zip, over60)
 
     if (!response) {
       return false
@@ -165,9 +159,9 @@ export default class ImpfBot {
     allowedVaccines["Johnson&Johnson"] = allowJohnson
     allowedVaccines["AstraZeneca"] = allowAstra
 
-    const user = new ImpfUser(fcmToken, zip, response.vaccinationCenterPk, minAppointments, notifyForAllCenters, allowedVaccines)
+    const user = new ImpfUser(fcmToken, zip, over60, response.vaccinationCenterPk, minAppointments, notifyForAllCenters, allowedVaccines)
     const center = new ImpfCenter(response.vaccinationCenterZip)
-    const request = new ImpfRequest(center)
+    const request = new ImpfRequest(center, over60)
 
     this.addUser(user)
     this.addRequest(request)
@@ -184,7 +178,7 @@ export default class ImpfBot {
 
   addRequest(request: ImpfRequest): void {
     const alreadyAdded = this.requests.find(r => {
-      return r.center.zip === request.center.zip
+      return r.center.zip === request.center.zip && r.over60 === request.over60
     })
     if (!alreadyAdded) {
       this.requests.push(request)
@@ -208,8 +202,8 @@ export default class ImpfBot {
   }
 
   ///Main Request
-  async checkTermin(zip: string): Promise<ImpfResponse | undefined> {
-    const url = `https://www.impfportal-niedersachsen.de/portal/rest/appointments/findVaccinationCenterListFree/${zip}?stiko=&count=1&birthdate=${AGE_UNDER_60}`
+  async checkTermin(zip: string, over60:boolean): Promise<ImpfResponse | undefined> {
+    const url = `https://www.impfportal-niedersachsen.de/portal/rest/appointments/findVaccinationCenterListFree/${zip}?stiko=&count=1&birthdate=${over60 ? AGE_OVER_60 : AGE_UNDER_60}`
     const response = await axios.get(url).catch(error => {
       console.log(`Request ${zip} failed: ${error.toString()}`)
     })
