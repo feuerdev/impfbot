@@ -147,12 +147,12 @@ export default class ImpfBot {
 
   /// Adding users --------------------------- 
   async addSubscription(fcmToken: string, zip: string, over60:boolean, minAppointments: number, notifyForAllCenters:boolean, allowBiontech: boolean, allowModerna: boolean,	allowJohnson: boolean,	allowAstra: boolean): Promise<boolean> {
-    await this.removeSubscription(fcmToken)
     const response = await this.checkTermin(zip, over60)
 
     if (!response) {
       return false
     }
+    await this.removeSubscription(fcmToken)
     const allowedVaccines:Record<string, boolean> = {}
     allowedVaccines["BioNtech"] = allowBiontech
     allowedVaccines["Moderna"] = allowModerna
